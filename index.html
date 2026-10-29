@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IO Hand + Color — Unica weight</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="layout">
+    <div class="stage">
+      <video id="video" autoplay playsinline muted width="1920" height="1080"></video>
+      <canvas id="canvas" width="1920" height="1080"></canvas>
+    </div>
+
+    <aside class="specimen-panel">
+      <div id="countdown-overlay">
+        <div class="intro-content" id="intro-content">
+          <div id="countdown-number">READY?</div>
+          <div id="intro-subtitle" class="intro-subtitle"></div>
+          <div id="intro-players" class="intro-players" aria-hidden="true"><div class="intro-player intro-p1"><span>PLAYER</span><strong>1</strong></div><div class="intro-player intro-p2"><span>PLAYER</span><strong>2</strong></div></div>
+        </div>
+      </div>
+
+      <div id="goal-overlay" class="goal-overlay">
+        <canvas id="goal-sphere" aria-label="Typografischer GOAL-Ball im Tornetz"></canvas>
+        <div id="goal-score" class="goal-score">0 : 0</div>
+      </div>
+
+      <div id="idle-overlay" class="goal-overlay idle-overlay" aria-label="Halbzeit">
+        <div class="halftime-split">
+          <div class="halftime-half halftime-top"><div id="ht-top" class="flap-board" aria-label="HALF"></div></div>
+          <div class="halftime-half halftime-bottom"><div id="ht-bottom" class="flap-board" aria-label="TIME!"></div></div>
+        </div>
+      </div>
+
+      <div id="over-overlay" class="goal-overlay over-overlay">
+        <div class="over-content" aria-live="polite">
+          <div class="over-eyebrow">FULL TIME</div>
+          <div class="over-headline" aria-label="MATCH OVER!">
+            <span class="over-line over-line-match">MATCH</span>
+            <span class="over-line over-line-over">OVER!</span>
+          </div>
+          <div class="over-rule" aria-hidden="true"></div>
+          <div id="over-score" class="over-score">3 : 1</div>
+          <div id="over-winner" class="over-winner">PLAYER 1 WINS</div>
+        </div>
+      </div>
+
+      <div id="keys-help" class="keys-help" hidden>
+        <p><b>Test keys</b></p>
+        <p>C · start countdown</p>
+        <p>B · mouse = ball (up / down, at the edge = goal)</p>
+        <p>↑ ↓ · move the ball</p>
+        <p>G / K · goal player 1 / 2</p>
+        <p>M · jump to match over</p>
+        <p>I · type rings (push on)</p>
+        <p>R · restart · H · menus · T · theme · ? · this list</p>
+      </div>
+
+      <div class="readouts">
+        <p class="specimen-panel__label"><span style="color:#00C2FF">●</span> word 1 · weight: <span id="wght-readout">'wght' 32</span></p>
+        <p class="specimen-panel__label"><span style="color:#C6FF00">●</span> word 1 · italic slant: <span id="slant-readout">0.0°</span></p>
+        <p class="specimen-panel__label"><span style="color:#FFFFFF">●</span> word 2 · weight: <span id="wght2-readout">32 / 228</span></p>
+        <p class="specimen-panel__label"><span style="color:#00FFC8">●</span> word 2 · italic slant: <span id="slant2-readout">0.0°</span></p>
+        <p class="specimen-panel__label">pink · rod spin: <span id="rot-readout">0°</span></p>
+        <p class="specimen-panel__label">orange · rod slide: <span id="ls-readout">0em</span></p>
+        <p class="specimen-panel__label">blue (ball) · font-size: <span id="size-readout">96px</span></p>
+        <p class="specimen-panel__label">time left: <span id="time-readout">–</span></p>
+        <p class="specimen-panel__label">score · player 1 : player 2: <span id="score-readout">0 : 0</span></p>
+        <p class="specimen-panel__label">blue (ball) · player 1 / player 2: <span id="ball-readout">50 / 50%</span></p>
+        <p class="specimen-panel__label">rings · weight / spin / slide: <span id="ring-readout">0 / 0 / 0%</span></p>
+        <p id="status" class="specimen-panel__label"></p>
+      </div>
+
+      <div class="badge">
+        <div class="disc">
+          <div class="half half--top">
+            <div id="specimen" class="specimen" aria-label="Switch!"><span id="part-a">Switch</span><span id="part-b">!</span></div>
+          </div>
+          <div class="half half--bottom">
+            <div id="specimen-2" class="specimen" aria-label="Lock in!"><span id="part-a-2">Lock&nbsp;</span><span id="part-b-2">in!</span></div>
+          </div>
+        </div>
+        <canvas id="badge-kinetic" class="kinetic"></canvas>
+      </div>
+
+      <div class="tools">
+        <details id="color-tool" class="color-tool">
+          <summary class="color-tool__title">Color calibration</summary>
+          <p class="color-tool__hint">Pick a swatch or sample color from the video.</p>
+          <p id="cv-status" class="color-tool__hint cv-status"></p>
+          <p id="pick-hint" class="pick-hint" hidden>Click on video to sample active color</p>
+          <div id="color-slots" class="color-slots"></div>
+          <button type="button" id="reset-colors" class="reset-colors">Reset colors</button>
+        </details>
+      </div>
+    </aside>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+  <script>
+    (function () {
+      var urls = [
+        "https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js",
+        "https://docs.opencv.org/4.x/opencv.js"
+      ];
+      function load(i) {
+        if (i >= urls.length) { window.openCvFailed = true; return; }
+        var s = document.createElement("script");
+        s.async = true;
+        s.src = urls[i];
+        s.onerror = function () { load(i + 1); };
+        document.head.appendChild(s);
+      }
+      load(0);
+    })();
+  </script>
+
+  <script src="kinetic.js"></script>
+  <script src="goal-sphere.js"></script>
+  <script src="flipboard.js"></script>
+  <script src="main.js"></script>
+</body>
